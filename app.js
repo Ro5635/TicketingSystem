@@ -22,6 +22,7 @@ app.use(function(req, res, next){
   "use strict";
   res.setHeader('x-powered-by', 'The Goose');
   res.setHeader('content-type' , 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', 'http://ah.uk');
   next();
 });
 
