@@ -3,6 +3,8 @@
 # jetbrains
 .idea
 
+# Don't publish connection details
+appConnectionDetails.js
 
 # Logs
 logs

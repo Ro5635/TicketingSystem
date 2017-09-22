@@ -77,27 +77,32 @@ exports.getTicket = function (currentBatchID) {
 exports.transitionTicketToAssigned = function (ticketID, email, MLHID) {
 
     return new Promise((resolve, reject) => {
+
+        // Ensure data is in correct form
+
+        email = email.toLowerCase();
+
         "use strict";
         transitionTicketState(conn, ticketID, 'ASSIGNED')
-            .then( () => {
+            .then(() => {
 
                 updateHolderData(conn, ticketID, email, MLHID)
                     .then(() => {
                         resolve();
                     })
-                    .catch( (err) => {
+                    .catch((err) => {
                         reject(err);
                     })
 
 
-            }).catch( (err) => {
+            }).catch((err) => {
 
-                log.error('Unable to transition ticket to assigned');
-                log.error('Fail in processing ticket ID: ' + ticketID);
-                if(err !== undefined){
-                    log.error(err);
+            log.error('Unable to transition ticket to assigned');
+            log.error('Fail in processing ticket ID: ' + ticketID);
+            if (err !== undefined) {
+                log.error(err);
 
-                }
+            }
 
         });
 
@@ -105,12 +110,65 @@ exports.transitionTicketToAssigned = function (ticketID, email, MLHID) {
 
 };
 
-
-function updateHolderData(connection, ticketID, email, MLHID){
+exports.isEmailAssignedToTicket = function(email) {
     "use strict";
-    return new Promise( (resolve, reject) => {
 
-        if(email === undefined || MLHID === undefined) {
+    return new Promise((resolve, reject) => {
+
+        emailIsRegisteredWithTicketInState(conn, email, 'ASSIGNED')
+            .then( payload => {
+
+                resolve(payload.isEmailRegisteredInState);
+
+            })
+            .catch(err => {
+                log.error('Unable to check if the email has already been assigned to an ticket');
+                log.error('Failed to check email: ' + email);
+                reject(err);
+
+            });
+
+    });
+
+
+
+};
+
+function emailIsRegisteredWithTicketInState(connection, email, ticketState) {
+    "use strict";
+
+    return new Promise((resolve, reject) => {
+
+
+        connection.query('SELECT COUNT(ID) AS TicketsMatching FROM Tickets WHERE IssuedToEmail = ? AND State = ?', [email, ticketState], function (err, result) {
+            if (err) {
+                reject('Unknown Error');
+            }
+
+            const matchingTickets = result[0]['TicketsMatching'];
+
+            //Is ticket matched with exactly one email
+            if (matchingTickets >= 1){
+                resolve({conn: connection, isEmailRegisteredInState: true});
+            }else{
+
+                // The email is not in the given state
+                resolve({conn: connection, isEmailRegisteredInState: false})
+
+            }
+
+
+        });
+
+
+    });
+}
+
+function updateHolderData(connection, ticketID, email, MLHID) {
+    "use strict";
+    return new Promise((resolve, reject) => {
+
+        if (email === undefined || MLHID === undefined) {
             log.error('Attempted to update ticket attendee info with undefined data');
             log.error('email: ' + email + ' and MLHID: ' + MLHID);
             reject();//TO DO
@@ -176,37 +234,37 @@ function transitionTicketState(connection, ticketID, toState) {
 
     return new Promise(function (resolve, reject) {
 
-    // Check TicketID exists
-    ticketExists(conn, ticketID).then( () => {
-        "use strict";
-        connection.query('UPDATE Tickets SET State = ? , AssignedDate = NOW() WHERE ID = ?', [toState, ticketID], function (err, result) {
-            if (err) {
-                conn.rollback(function () {
-                    reject('Unknown Error');
-                });
-            }
+        // Check TicketID exists
+        ticketExists(conn, ticketID).then(() => {
+            "use strict";
+            connection.query('UPDATE Tickets SET State = ? , AssignedDate = NOW() WHERE ID = ?', [toState, ticketID], function (err, result) {
+                if (err) {
+                    conn.rollback(function () {
+                        reject('Unknown Error');
+                    });
+                }
 
-            let payload = {conn: connection};
-             resolve(payload);
+                let payload = {conn: connection};
+                resolve(payload);
 
 
-        });
+            });
 
-    }).catch( (err) => {
-        "use strict";
+        }).catch((err) => {
+            "use strict";
 
-        log.error('Unable to transition ticket state to: ' + toState);
-        reject(err);
-        // TO DO
+            log.error('Unable to transition ticket state to: ' + toState);
+            reject(err);
+            // TO DO
 
-    })
+        })
 
     });
 
 }
 
-                                                // TO DO reject with error...
-function ticketExists(connection, ticketID){
+// TO DO reject with error...
+function ticketExists(connection, ticketID) {
     "use strict";
 
     return new Promise(function (resolve, reject) {
@@ -220,17 +278,16 @@ function ticketExists(connection, ticketID){
 
             let matchingTicketIDs = result[0]['NUMOFMATCHINGID'];
 
-            if(matchingTicketIDs === 1){
+            if (matchingTicketIDs === 1) {
                 resolve();
 
-            }else{
+            } else {
                 log.error('Invalid TicketID used, Failed ID: ' + ticketID);
                 log.error('Found ' + matchingTicketIDs + ' tickets matching supplied ticketID');
 
                 reject(new Error('Ticket Not Found'));
 
             }
-
 
 
         });
@@ -257,6 +314,7 @@ function remainingTicketsNotNegative(payload) {
                 return resolve(payload);
 
             } else {
+                log.status('Request for ticket was unable to be fulfilled, no tickets available.');
                 reject('No Tickets Available');
             }
         });
