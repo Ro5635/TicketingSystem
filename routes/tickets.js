@@ -9,10 +9,28 @@ const ticketEmail = require('../models/email');
 
 const PRIVATE_KEY = require('../appConnectionDetails').googleRecapchaPrivKey;
 
+const currentBatchID = 1;
+
+router.get('/ticketsavailable', function(req, res, next){
+    "use strict";
+
+    ticketing.getNumReminingTicket(currentBatchID)
+        .then( availableTickets => {
+               res.send({'availableTickets' : availableTickets});
+
+        })
+        .catch( err => {
+                log.error('Unable to get the number of remaining tickets');
+                log.error(err);
+
+                res.status(500).send({error: {msg: 'Error in getting remaining tickets'}});
+        })
+
+});
 
 router.post('/provision', function (req, res, next) {
 
-    const currentBatchID = 1;
+
 
 
     // Check google re-captcha

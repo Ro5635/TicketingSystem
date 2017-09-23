@@ -134,6 +134,25 @@ exports.isEmailAssignedToTicket = function(email) {
 
 };
 
+exports.getNumReminingTicket = function(batchID){
+
+    return new Promise( (resolve, reject) => {
+        "use strict";
+
+        getRemaningTickets({batchID : batchID, conn: conn})
+            .then( (payload) => {
+                // Got the tickets remaining
+                resolve(payload.remainingTickets);
+            })
+            .catch( err => {
+                log.error('Failed to get the number of remaining tickets');
+                reject(err);
+
+            })
+
+    })
+}
+
 function emailIsRegisteredWithTicketInState(connection, email, ticketState) {
     "use strict";
 
