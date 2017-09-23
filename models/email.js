@@ -20,7 +20,7 @@ exports.sendTicketMail = function (toEmail, toName) {
         mailHelper.sendMail(toEmail, 'AstonHack Ticket', emailContent)
             .then( result => {
 
-                log.status('Ticket Email Sent Successfully');
+                log.info('Ticket Email Sent Successfully');
                 resolve(result);
 
             })

@@ -142,13 +142,13 @@ router.post('/assign', function (req, res, next) {
                             .then(result => {
                                 // Its bad practice to put user data in the logs like this but I want to be able to
                                 // manually work out whats happened if all breaks...
-                                log.status('Ticket Email Sent Successfully to Email: ' + holderEmail);
+                                log.info('Ticket Email Sent Successfully to Email: ' + holderEmail);
 
 
                             })
                             .catch(err => {
                                 log.error('Failed sending out ticket');
-                                log.error('')
+                                log.error(err);
                             });
 
                     })

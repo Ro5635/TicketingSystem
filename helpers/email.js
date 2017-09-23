@@ -30,7 +30,7 @@ exports.sendMail = function (toEmail, emailSubject, emailContent) {
             subject: emailSubject,
             html: emailContent
         }).then(result => {
-            log.status('Successfully sent ticket email out to: ' + toEmail);
+            log.info('Successfully sent ticket email out to: ' + toEmail);
             resolve(result);
 
         }).catch(err => {
