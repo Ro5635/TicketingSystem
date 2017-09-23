@@ -5,10 +5,9 @@ const router = express.Router();
 const log = require('../helpers/bunyanLogger').getLogger;
 const rp = require('request-promise');
 const ticketing = require('../models/ticket');
+const ticketEmail = require('../models/email');
 
 const PRIVATE_KEY = require('../appConnectionDetails').googleRecapchaPrivKey;
-
-
 
 
 router.post('/provision', function (req, res, next) {
@@ -19,10 +18,10 @@ router.post('/provision', function (req, res, next) {
     // Check google re-captcha
     const googleToken = req.body.googleToken;
 
-    if(!googleToken){
+    if (!googleToken) {
         // Token must be supplied for a ticket to be provisioned, stops the spamming of the API.
         // Send Error
-        return res.status(400).send({Error : {msg : 'Please Complete The Google reCAPTCHA'}});
+        return res.status(400).send({Error: {msg: 'Please Complete The Google reCAPTCHA'}});
 
     }
 
@@ -31,8 +30,10 @@ router.post('/provision', function (req, res, next) {
     const options = {
         method: 'POST',
         uri: 'https://www.google.com/recaptcha/api/siteverify',
-        body: {
-            some: 'secret=' + PRIVATE_KEY + '&response=' + googleToken
+        formData: {
+            // some: 'secret=' + PRIVATE_KEY + '&response=' + googleToken
+            secret: PRIVATE_KEY,
+            response: googleToken
         },
         json: true
     };
@@ -41,25 +42,39 @@ router.post('/provision', function (req, res, next) {
         .then(function (jsonResponse) {
             "use strict";
 
-            console.log('RESPONSE: ', jsonResponse);
+            // console.log('g: ', jsonResponse.success);
 
-        }).catch( err => {
-            "use strict";
+            if (jsonResponse.success) {
+                //Google recpacha passed verification
+
+                ticketing.getTicket(currentBatchID).then(function (ticket) {
+                    "use strict";
+                    return res.send({ticket: {id: ticket.ID}});
+
+                })
+                    .catch(function (err) {
+                        "use strict";
+                        return res.send({error: {msg: err}});
+
+                    });
+
+
+            } else {
+                // Google recapcha failed verification
+
+                return res.status(400).send({Error: {msg: 'The Google reCAPTCHA Failed Verification'}});
+
+            }
+
+        }).catch(err => {
+        "use strict";
+
+        log.error('Failed to query google recapcha API');
+        log.error('Unable to proceed');
+                return res.status(400).send({Error: {msg: 'The Google reCAPTCHA Verification API Could Not Be Reached'}});
+
 
     });
-
-
-
-    ticketing.getTicket(currentBatchID).then(function (ticket) {
-        "use strict";
-        return res.send({ticket: {id: ticket.ID}});
-
-    })
-        .catch(function (err) {
-            "use strict";
-            return res.send({error: {msg: err}});
-
-        });
 
 
 });
@@ -120,6 +135,21 @@ router.post('/assign', function (req, res, next) {
                         jsonAPIResponse.email = holderEmail;
 
                         res.send(jsonAPIResponse);
+
+                        // Now send the ticket out to them over email, this is done after the HTTP response has been sent as it takes
+                        // a while, this should later be transfered over to use AWS SQS so that emails cannot be 'lost' on server failure...
+                        ticketEmail.sendTicketMail(holderEmail, jsonResponse.data.first_name)
+                            .then(result => {
+                                // Its bad practice to put user data in the logs like this but I want to be able to
+                                // manually work out whats happened if all breaks...
+                                log.status('Ticket Email Sent Successfully to Email: ' + holderEmail);
+
+
+                            })
+                            .catch(err => {
+                                log.error('Failed sending out ticket');
+                                log.error('')
+                            });
 
                     })
                     .catch(err => {
