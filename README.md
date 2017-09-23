@@ -7,10 +7,11 @@ This is a ticketing system, it has been developed for use at AstonHack 2017, a h
 Using:
 
 BackEnd:
-WebServer: Node
-Database : MySQL
-Email    : AWS SES
-User ID  : MyMLH
+
+* WebServer: Node
+* Database : MySQL
+* Email    : AWS SES
+* User ID  : MyMLH
 
 FrontEnd: JQuery, SASS, AJAX, S3 CloudFront
 
